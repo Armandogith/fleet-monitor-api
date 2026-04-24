@@ -1,0 +1,14 @@
+# Ignorar banco de dados local
+*.db
+*.sqlite3
+
+# Ignorar senhas e tokens
+.env
+
+# Ignorar arquivos do sistema e Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.DS_Store
