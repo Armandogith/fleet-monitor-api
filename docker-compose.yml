@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    container_name: transport_monitor_api
+    restart: always
+    ports:
+      - "80:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - TZ=America/Sao_Paulo
+    env_file:
+      - .env

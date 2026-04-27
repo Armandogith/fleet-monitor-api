@@ -1,6 +1,7 @@
-# Ignorar banco de dados local
+# Ignorar banco de dados local e volumes do Docker
 *.db
 *.sqlite3
+data/
 
 # Ignorar senhas e tokens
 .env
