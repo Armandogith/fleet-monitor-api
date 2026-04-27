@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transport Monitor — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #18181f;
+    --border: #252530;
+    --border2: #2e2e3d;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+    --dim: #3a3a4a;
+    --accent: #4f6ef7;
+    --accent2: #7c3aed;
+    --green: #22d3a0;
+    --yellow: #f59e0b;
+    --red: #ef4444;
+    --demo: #f59e0b;
+    --full: #22d3a0;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Grid bg ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Header ── */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10,10,15,0.92);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+
+  .logo-text {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 15px;
+    letter-spacing: 0.05em;
+    color: var(--text);
+  }
+
+  .logo-badge {
+    font-size: 9px;
+    background: var(--accent);
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.1em;
+    font-weight: 600;
+  }
+
+  .header-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* ── Layout ── */
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 32px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .page-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    margin-bottom: 6px;
+    background: linear-gradient(90deg, var(--text), var(--muted));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .page-sub {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 36px;
+  }
+
+  /* ── Stats ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 40px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .stat-card:hover { border-color: var(--border2); }
+
+  .stat-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+  }
+
+  .stat-label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .stat-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .stat-sub {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  /* ── Panels ── */
+  .panels {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .panel-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--text);
+  }
+
+  .panel-body { padding: 24px; }
+
+  /* ── Form ── */
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .form-label {
+    display: block;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .form-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .form-input:focus { border-color: var(--accent); }
+
+  .form-input::placeholder { color: var(--dim); }
+
+  .plan-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .plan-opt {
+    position: relative;
+  }
+
+  .plan-opt input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    width: 0; height: 0;
+  }
+
+  .plan-opt label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .plan-opt label .plan-name {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+  }
+
+  .plan-opt label .plan-dur {
+    font-size: 10px;
+  }
+
+  .plan-opt input:checked + label {
+    border-color: var(--accent);
+    background: rgba(79,110,247,0.08);
+    color: var(--text);
+  }
+
+  .plan-opt input[value="demo"]:checked + label { border-color: var(--demo); background: rgba(245,158,11,0.08); }
+  .plan-opt input[value="demo"]:checked + label .plan-name { color: var(--demo); }
+  .plan-opt input[value="full"]:checked + label { border-color: var(--full); background: rgba(34,211,160,0.08); }
+  .plan-opt input[value="full"]:checked + label .plan-name { color: var(--full); }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .btn-primary {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+  }
+
+  .btn-primary:hover { opacity: 0.85; transform: translateY(-1px); }
+
+  .btn-demo {
+    background: rgba(245,158,11,0.12);
+    color: var(--demo);
+    border: 1px solid rgba(245,158,11,0.3);
+    font-size: 11px;
+    padding: 6px 12px;
+  }
+
+  .btn-demo:hover { background: rgba(245,158,11,0.2); }
+
+  .btn-full {
+    background: rgba(34,211,160,0.12);
+    color: var(--full);
+    border: 1px solid rgba(34,211,160,0.3);
+    font-size: 11px;
+    padding: 6px 12px;
+  }
+
+  .btn-full:hover { background: rgba(34,211,160,0.2); }
+
+  .btn-danger {
+    background: rgba(239,68,68,0.1);
+    color: var(--red);
+    border: 1px solid rgba(239,68,68,0.2);
+    font-size: 11px;
+    padding: 6px 10px;
+  }
+
+  .btn-danger:hover { background: rgba(239,68,68,0.2); }
+
+  /* ── Table ── */
+  .table-wrap {
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  thead th {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 10px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    font-weight: 500;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+
+  tbody tr:hover { background: var(--surface2); }
+  tbody tr:last-child { border-bottom: none; }
+
+  tbody td {
+    padding: 14px 16px;
+    font-size: 12px;
+    vertical-align: middle;
+  }
+
+  .company-name {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--text);
+  }
+
+  .company-email {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  /* ── Badge ── */
+  .badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .badge-demo { background: rgba(245,158,11,0.15); color: var(--demo); border: 1px solid rgba(245,158,11,0.3); }
+  .badge-full { background: rgba(34,211,160,0.15); color: var(--full); border: 1px solid rgba(34,211,160,0.3); }
+  .badge-active { background: rgba(34,211,160,0.1); color: var(--green); }
+  .badge-warn { background: rgba(245,158,11,0.1); color: var(--yellow); }
+  .badge-danger { background: rgba(239,68,68,0.1); color: var(--red); }
+  .badge-expired { background: rgba(107,107,128,0.1); color: var(--muted); }
+
+  /* ── Key display ── */
+  .key-display {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--text);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+
+  .key-display:hover { border-color: var(--accent); }
+
+  .key-copy-icon { font-size: 10px; color: var(--muted); }
+
+  .actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    z-index: 200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 16px;
+    padding: 32px;
+    width: 420px;
+    max-width: 95vw;
+    animation: slideUp 0.25s ease;
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .modal-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 800;
+    margin-bottom: 6px;
+  }
+
+  .modal-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 24px;
+  }
+
+  .modal-key-box {
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  .modal-key-label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .modal-key-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: 0.2em;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  .modal-key-value.demo-key { color: var(--demo); }
+  .modal-key-value.full-key { color: var(--full); }
+
+  .modal-key-expires {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+  }
+
+  .btn-copy {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+
+  .btn-copy:hover { border-color: var(--accent); color: var(--accent); }
+
+  .btn-close-modal {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    transition: all 0.2s;
+  }
+
+  .btn-close-modal:hover { border-color: var(--border2); color: var(--text); }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed;
+    bottom: 32px;
+    right: 32px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    padding: 14px 20px;
+    font-size: 12px;
+    color: var(--text);
+    z-index: 300;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transform: translateY(20px);
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+  }
+
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { border-color: rgba(34,211,160,0.4); }
+  .toast.error { border-color: rgba(239,68,68,0.4); }
+
+  /* ── Empty ── */
+  .empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .empty-icon { font-size: 32px; margin-bottom: 12px; }
+
+  /* ── Loading ── */
+  .loading {
+    display: inline-block;
+    width: 12px; height: 12px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    vertical-align: middle;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .days-bar {
+    width: 80px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+
+  .days-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.5s;
+  }
+
+  @media (max-width: 900px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .panels { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 600px) {
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    header { padding: 0 16px; }
+    .container { padding: 24px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🚛</div>
+    <span class="logo-text">TRANSPORT MONITOR</span>
+    <span class="logo-badge">ADMIN</span>
+  </div>
+  <div class="header-status">
+    <div class="status-dot"></div>
+    <span id="headerDate">—</span>
+  </div>
+</header>
+
+<!-- Main -->
+<div class="container">
+  <div class="page-title">Painel Administrativo</div>
+  <div class="page-sub">Gerencie empresas, gere senhas e controle os planos</div>
+
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Total Empresas</div>
+      <div class="stat-value" id="statTotal">—</div>
+      <div class="stat-sub">cadastradas</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Ativas</div>
+      <div class="stat-value" id="statActive" style="color:var(--green)">—</div>
+      <div class="stat-sub">plano válido</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Demo / Full</div>
+      <div class="stat-value" id="statPlans" style="font-size:20px">—</div>
+      <div class="stat-sub">distribuição</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Motoristas</div>
+      <div class="stat-value" id="statDrivers">—</div>
+      <div class="stat-sub">total cadastrados</div>
+    </div>
+  </div>
+
+  <!-- Panels -->
+  <div class="panels">
+
+    <!-- Left: Criar empresa -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">➕ Nova Empresa</span>
+      </div>
+      <div class="panel-body">
+        <div class="form-group">
+          <label class="form-label">Nome da empresa *</label>
+          <input class="form-input" id="newName" type="text" placeholder="Transportadora XYZ">
+        </div>
+        <div class="form-group">
+          <label class="form-label">E-mail do responsável</label>
+          <input class="form-input" id="newEmail" type="email" placeholder="contato@empresa.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">WhatsApp do responsável</label>
+          <input class="form-input" id="newWhats" type="text" placeholder="11999990000">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tipo de plano</label>
+          <div class="plan-selector">
+            <div class="plan-opt">
+              <input type="radio" name="newPlan" id="planDemo" value="demo" checked>
+              <label for="planDemo">
+                <span class="plan-name">DEMO</span>
+                <span class="plan-dur">7 dias</span>
+              </label>
+            </div>
+            <div class="plan-opt">
+              <input type="radio" name="newPlan" id="planFull" value="full">
+              <label for="planFull">
+                <span class="plan-name">FULL</span>
+                <span class="plan-dur">30 dias</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="createCompany()" id="btnCreate">
+          Criar empresa e gerar senha
+        </button>
+      </div>
+    </div>
+
+    <!-- Right: Tabela de empresas -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">📋 Empresas Cadastradas</span>
+        <button class="btn" style="font-size:11px;padding:6px 12px;background:var(--surface2);border:1px solid var(--border);color:var(--muted)" onclick="loadCompanies()">↻ Atualizar</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Empresa</th>
+              <th>Plano</th>
+              <th>Status</th>
+              <th>Senha Atual</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="companiesBody">
+            <tr>
+              <td colspan="5">
+                <div class="empty-state">
+                  <div class="loading"></div>
+                  <div style="margin-top:8px">Carregando...</div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal: Senha gerada -->
+<div class="modal-overlay" id="keyModal">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">🎉 Empresa criada!</div>
+    <div class="modal-sub" id="modalSub">Envie esta senha para o cliente acessar o sistema</div>
+    <div class="modal-key-box">
+      <div class="modal-key-label">Senha de acesso</div>
+      <div class="modal-key-value" id="modalKey">—</div>
+      <div class="modal-key-expires" id="modalExpires">—</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-copy" onclick="copyKey()">📋 Copiar senha</button>
+      <button class="btn-close-modal" onclick="closeModal()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <span id="toastIcon">✓</span>
+  <span id="toastMsg">Copiado!</span>
+</div>
+
+<script>
+const API = 'http://localhost:8000';
+let currentKey = '';
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const now = new Date();
+  document.getElementById('headerDate').textContent =
+    now.toLocaleDateString('pt-BR', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
+  loadStats();
+  loadCompanies();
+});
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const r = await fetch(`${API}/admin/stats`);
+    const d = await r.json();
+    document.getElementById('statTotal').textContent = d.total_companies ?? '—';
+    document.getElementById('statActive').textContent = d.active_companies ?? '—';
+    document.getElementById('statPlans').textContent = `${d.demo_plans ?? 0} / ${d.full_plans ?? 0}`;
+    document.getElementById('statDrivers').textContent = d.total_drivers ?? '—';
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+// ── Companies ─────────────────────────────────────────────────────────────────
+async function loadCompanies() {
+  const tbody = document.getElementById('companiesBody');
+  tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="loading"></div><div style="margin-top:8px">Carregando...</div></div></td></tr>`;
+  try {
+    const r = await fetch(`${API}/admin/companies`);
+    const companies = await r.json();
+    renderTable(companies);
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">⚠️</div>Erro ao carregar. Servidor ligado?</div></td></tr>`;
+  }
+}
+
+function renderTable(companies) {
+  const tbody = document.getElementById('companiesBody');
+  if (!companies.length) {
+    tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">🏢</div>Nenhuma empresa cadastrada ainda.</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = companies.map(c => {
+    const planBadge = c.plan_type === 'demo'
+      ? '<span class="badge badge-demo">DEMO</span>'
+      : '<span class="badge badge-full">FULL</span>';
+
+    let statusBadge, barColor, barPct;
+    const maxDays = c.plan_type === 'demo' ? 7 : 30;
+    barPct = Math.max(0, Math.min(100, (c.days_remaining / maxDays) * 100));
+
+    if (!c.is_active) {
+      statusBadge = '<span class="badge badge-expired">Expirado</span>';
+      barColor = 'var(--muted)';
+    } else if (c.days_remaining <= 2) {
+      statusBadge = `<span class="badge badge-danger">${c.days_remaining}d restantes</span>`;
+      barColor = 'var(--red)';
+    } else if (c.days_remaining <= 7) {
+      statusBadge = `<span class="badge badge-warn">${c.days_remaining}d restantes</span>`;
+      barColor = 'var(--yellow)';
+    } else {
+      statusBadge = `<span class="badge badge-active">${c.days_remaining}d restantes</span>`;
+      barColor = 'var(--green)';
+    }
+
+    const keyHtml = c.access_key
+      ? `<span class="key-display" onclick="copyText('${c.access_key}')" title="Clique para copiar">
+           ${c.access_key} <span class="key-copy-icon">⧉</span>
+         </span>`
+      : `<span style="color:var(--muted);font-size:11px">Nenhuma</span>`;
+
+    return `
+      <tr>
+        <td>
+          <div class="company-name">${c.name}</div>
+          <div class="company-email">${c.responsible_email || '—'}</div>
+          <div style="font-size:10px;color:var(--dim);margin-top:2px">${c.driver_count} motoristas</div>
+        </td>
+        <td>${planBadge}</td>
+        <td>
+          ${statusBadge}
+          <div class="days-bar" style="margin-top:6px">
+            <div class="days-bar-fill" style="width:${barPct}%;background:${barColor}"></div>
+          </div>
+        </td>
+        <td>${keyHtml}</td>
+        <td>
+          <div class="actions">
+            <button class="btn btn-demo" onclick="renewKey(${c.id}, 'demo')" title="Renovar como Demo 7 dias">↻ Demo</button>
+            <button class="btn btn-full" onclick="renewKey(${c.id}, 'full')" title="Renovar como Full 30 dias">↻ Full</button>
+            <button class="btn btn-danger" onclick="deleteCompany(${c.id}, '${c.name.replace(/'/g,'')}')" title="Remover empresa">✕</button>
+          </div>
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+// ── Create company ─────────────────────────────────────────────────────────────
+async function createCompany() {
+  const name = document.getElementById('newName').value.trim();
+  if (!name) { showToast('⚠️ Nome da empresa é obrigatório', 'error'); return; }
+
+  const plan = document.querySelector('input[name="newPlan"]:checked').value;
+  const email = document.getElementById('newEmail').value.trim();
+  const whats = document.getElementById('newWhats').value.trim();
+
+  const btn = document.getElementById('btnCreate');
+  btn.innerHTML = '<span class="loading"></span> Criando...';
+  btn.disabled = true;
+
+  try {
+    const r = await fetch(`${API}/admin/companies`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, plan_type: plan, responsible_email: email || null, responsible_whatsapp: whats || null })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'Erro');
+
+    showKeyModal(d.company, '🎉 Empresa criada!', 'Envie esta senha para o cliente acessar o sistema');
+    document.getElementById('newName').value = '';
+    document.getElementById('newEmail').value = '';
+    document.getElementById('newWhats').value = '';
+    document.getElementById('planDemo').checked = true;
+    loadStats();
+    loadCompanies();
+  } catch(e) {
+    showToast('❌ ' + e.message, 'error');
+  } finally {
+    btn.innerHTML = 'Criar empresa e gerar senha';
+    btn.disabled = false;
+  }
+}
+
+// ── Renew key ─────────────────────────────────────────────────────────────────
+async function renewKey(id, planType) {
+  const label = planType === 'demo' ? 'DEMO (7 dias)' : 'FULL (30 dias)';
+  if (!confirm(`Gerar nova senha ${label} para esta empresa?\n\nA senha antiga deixará de funcionar imediatamente.`)) return;
+
+  try {
+    const r = await fetch(`${API}/admin/generate-key/${id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan_type: planType })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'Erro');
+
+    // Buscar empresa atualizada
+    const companiesR = await fetch(`${API}/admin/companies`);
+    const companies = await companiesR.json();
+    const updated = companies.find(c => c.id === id);
+
+    showKeyModal(
+      { ...updated, access_key: d.access_key, plan_type: planType, plan_expires_at: d.plan_expires_at },
+      '🔑 Nova senha gerada',
+      'A senha anterior foi invalidada. Envie esta ao cliente.'
+    );
+    loadStats();
+    loadCompanies();
+  } catch(e) {
+    showToast('❌ ' + e.message, 'error');
+  }
+}
+
+// ── Delete ─────────────────────────────────────────────────────────────────────
+async function deleteCompany(id, name) {
+  if (!confirm(`Remover a empresa "${name}"?\n\nTodos os motoristas e documentos serão apagados permanentemente.`)) return;
+
+  try {
+    const r = await fetch(`${API}/admin/companies/${id}`, { method: 'DELETE' });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'Erro');
+    showToast('✓ Empresa removida', 'success');
+    loadStats();
+    loadCompanies();
+  } catch(e) {
+    showToast('❌ ' + e.message, 'error');
+  }
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function showKeyModal(company, title, sub) {
+  currentKey = company.access_key;
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalSub').textContent = sub;
+
+  const keyEl = document.getElementById('modalKey');
+  keyEl.textContent = company.access_key;
+  keyEl.className = 'modal-key-value ' + (company.plan_type === 'demo' ? 'demo-key' : 'full-key');
+
+  const exp = company.plan_expires_at;
+  const expDate = exp ? new Date(exp + 'T00:00:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' }) : '—';
+  const planLabel = company.plan_type === 'demo' ? 'Demo — 7 dias' : 'Full — 30 dias';
+  document.getElementById('modalExpires').textContent = `${planLabel} · Expira em ${expDate}`;
+
+  document.getElementById('keyModal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('keyModal').classList.remove('open');
+}
+
+function copyKey() {
+  copyText(currentKey);
+  showToast('✓ Senha copiada!', 'success');
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(() => showToast('✓ Copiado: ' + text, 'success'));
+}
+
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => t.className = 'toast', 3000);
+}
+
+// Fechar modal clicando fora
+document.getElementById('keyModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+</script>
+</body>
+</html>

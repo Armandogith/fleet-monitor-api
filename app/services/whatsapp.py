@@ -1,18 +1,16 @@
 import httpx
+import logging
 from app.core.config import settings
 
+logger = logging.getLogger(__name__)
 
-class WhatsAppService:
-    """
-    Integração com a WhatsApp Business Cloud API da Meta.
-    Utiliza o template 'hello_world' para testes gratuitos (5 números).
-    Para produção, crie templates personalizados no WhatsApp Manager.
-    """
+SMSDEV_URL = "https://api.smsdev.com.br/v1/send"
 
-    def __init__(self):
-        self.base_url = f"https://graph.facebook.com/{settings.WHATSAPP_VERSION}"
-        self.phone_number_id = settings.WHATSAPP_PHONE_NUMBER_ID
-        self.token = settings.WHATSAPP_API_TOKEN
+class SMSService:
+    """
+    Integração com a API da SMSDev para envio de alertas via SMS.
+    Documentação: https://www.smsdev.com.br/
+    """
 
     async def send_alert(
         self,
@@ -22,76 +20,41 @@ class WhatsAppService:
         days_remaining: int
     ) -> dict:
         """
-        Envia alerta de vencimento de documento via WhatsApp.
-
-        Para os 5 números de teste gratuitos usa o template 'hello_world'.
-        Para produção, substituir pelo template personalizado abaixo (comentado).
+        Envia alerta de vencimento de documento via SMS.
 
         Args:
-            phone: Número no formato internacional sem '+' (ex: 5511999999999)
+            phone: Número no formato nacional sem '+' e sem '-' (ex: 11999999999)
             driver_name: Nome do motorista
             doc_type: Tipo do documento (CNH, CRLV, etc)
             days_remaining: Dias restantes para o vencimento
         """
-        url = f"{self.base_url}/{self.phone_number_id}/messages"
+        message = (
+            f"⚠️ Fleet Monitor: Olá {driver_name}, "
+            f"seu(sua) {doc_type} vence em {days_remaining} dia(s). "
+            f"Providencie a renovação o quanto antes."
+        )
 
-        headers = {
-            "Authorization": f"Bearer {self.token}",
-            "Content-Type": "application/json",
-        }
-
-        # ---------------------------------------------------------------
-        # MODO TESTE: usa template 'hello_world' (funciona nos 5 números
-        # de teste sem custo e sem aprovação de template)
-        # ---------------------------------------------------------------
         payload = {
-            "messaging_product": "whatsapp",
-            "to": phone,
-            "type": "template",
-            "template": {
-                "name": "hello_world",
-                "language": {"code": "en_US"}
-            }
+            "key": settings.SMSDEV_API_KEY,
+            "type": 9,           # tipo 9 = SMS padrão
+            "number": phone,
+            "msg": message,
         }
-
-        # ---------------------------------------------------------------
-        # MODO PRODUÇÃO: descomente abaixo e comente o bloco acima.
-        # Requer template aprovado no WhatsApp Manager com variáveis:
-        # {{1}} = nome do motorista
-        # {{2}} = tipo do documento
-        # {{3}} = dias restantes
-        # ---------------------------------------------------------------
-        # payload = {
-        #     "messaging_product": "whatsapp",
-        #     "to": phone,
-        #     "type": "template",
-        #     "template": {
-        #         "name": "alerta_vencimento_cnh",
-        #         "language": {"code": "pt_BR"},
-        #         "components": [
-        #             {
-        #                 "type": "body",
-        #                 "parameters": [
-        #                     {"type": "text", "text": driver_name},
-        #                     {"type": "text", "text": doc_type},
-        #                     {"type": "text", "text": str(days_remaining)},
-        #                 ]
-        #             }
-        #         ]
-        #     }
-        # }
 
         async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(url, headers=headers, json=payload)
+            response = await client.post(SMSDEV_URL, json=payload)
 
-        if response.status_code not in (200, 201):
+        data = response.json()
+
+        # SMSDev retorna situacao "OK" em caso de sucesso
+        if response.status_code not in (200, 201) or data.get("situacao") != "OK":
             raise Exception(
-                f"Erro ao enviar WhatsApp para {phone}: "
-                f"[{response.status_code}] {response.text}"
+                f"Erro ao enviar SMS para {phone}: "
+                f"[{response.status_code}] {data}"
             )
 
-        return response.json()
-
+        logger.info(f"SMS enviado para {phone} | ID: {data.get('id')}")
+        return data
 
 # Instância global usada em nodes.py
-whatsapp_service = WhatsAppService()
+sms_service = SMSService()

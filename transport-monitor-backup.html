@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transport Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0e14;
+    --surface: #131720;
+    --surface2: #1c2232;
+    --border: #242c3d;
+    --accent: #3b82f6;
+    --accent-dim: rgba(59,130,246,0.12);
+    --accent-glow: rgba(59,130,246,0.35);
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --success: #22c55e;
+    --text: #e2e8f0;
+    --text-muted: #64748b;
+    --text-dim: #94a3b8;
+    --mono: 'DM Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* LOGIN */
+  #login-screen {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100; background: var(--bg);
+  }
+
+  .login-card {
+    width: 420px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 48px 40px;
+    position: relative;
+    box-shadow: 0 0 80px rgba(59,130,246,0.08), 0 24px 48px rgba(0,0,0,0.5);
+    animation: slideUp 0.5s cubic-bezier(0.22,1,0.36,1) both;
+  }
+
+  .login-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 50%; transform: translateX(-50%);
+    width: 60%; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+
+  @keyframes slideUp {
+    from { opacity:0; transform: translateY(24px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+
+  .login-logo {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 36px;
+  }
+
+  .login-logo-icon {
+    width: 40px; height: 40px;
+    background: var(--accent); border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; box-shadow: 0 0 20px var(--accent-glow);
+  }
+
+  .login-logo-text { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+  .login-logo-text span { color: var(--accent); }
+
+  .login-label {
+    font-family: var(--mono); font-size: 11px; color: var(--text-muted);
+    letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px; display: block;
+  }
+
+  .login-input {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 16px; color: var(--text);
+    font-family: var(--mono); font-size: 15px; font-weight: 600;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    outline: none; transition: border-color 0.2s, box-shadow 0.2s; margin-bottom: 20px;
+  }
+
+  .login-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+  .login-input::placeholder { color: var(--text-muted); font-weight: 400; letter-spacing: 0.05em; text-transform: none; }
+
+  .login-btn {
+    width: 100%; background: var(--accent); color: #fff; border: none;
+    border-radius: 8px; padding: 14px; font-family: var(--sans);
+    font-size: 15px; font-weight: 700; cursor: pointer;
+    transition: opacity 0.2s, box-shadow 0.2s, transform 0.15s; letter-spacing: 0.3px;
+  }
+
+  .login-btn:hover { opacity: 0.9; box-shadow: 0 0 24px var(--accent-glow); }
+  .login-btn:active { transform: scale(0.98); }
+  .login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .login-error {
+    margin-top: 16px; padding: 12px 16px;
+    background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);
+    border-radius: 8px; color: #fca5a5; font-family: var(--mono);
+    font-size: 13px; display: none;
+  }
+
+  .login-hint {
+    margin-top: 20px; font-family: var(--mono); font-size: 11px;
+    color: var(--text-muted); text-align: center; line-height: 1.8;
+  }
+
+  /* EXPIRED */
+  #expired-screen {
+    position: fixed; inset: 0; display: none;
+    align-items: center; justify-content: center; z-index: 90; background: var(--bg);
+  }
+
+  .expired-card {
+    width: 460px; background: var(--surface);
+    border: 1px solid rgba(239,68,68,0.3); border-radius: 16px;
+    padding: 56px 48px; text-align: center;
+    box-shadow: 0 0 80px rgba(239,68,68,0.06), 0 24px 48px rgba(0,0,0,0.5);
+    animation: slideUp 0.5s cubic-bezier(0.22,1,0.36,1) both; position: relative;
+  }
+
+  .expired-card::before {
+    content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 60%; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--danger), transparent);
+  }
+
+  .expired-icon {
+    width: 72px; height: 72px; background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.3); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px; margin: 0 auto 28px;
+  }
+
+  .expired-title { font-size: 26px; font-weight: 800; margin-bottom: 12px; letter-spacing: -0.5px; }
+  .expired-subtitle { color: var(--text-dim); font-size: 14px; line-height: 1.7; margin-bottom: 8px; }
+  .expired-company { font-family: var(--mono); font-size: 13px; color: var(--text-muted); margin-bottom: 36px; }
+
+  .expired-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--danger); color: #fff; border: none; border-radius: 10px;
+    padding: 16px 32px; font-family: var(--sans); font-size: 15px; font-weight: 700;
+    cursor: pointer; transition: opacity 0.2s, box-shadow 0.2s;
+    box-shadow: 0 0 24px rgba(239,68,68,0.3); text-decoration: none;
+  }
+
+  .expired-btn:hover { opacity: 0.9; box-shadow: 0 0 32px rgba(239,68,68,0.45); }
+
+  .expired-back {
+    margin-top: 20px; font-family: var(--mono); font-size: 12px;
+    color: var(--text-muted); cursor: pointer; transition: color 0.2s;
+  }
+  .expired-back:hover { color: var(--text-dim); }
+
+  .plan-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 12px; border-radius: 20px; font-family: var(--mono);
+    font-size: 11px; font-weight: 500; letter-spacing: 1px;
+    text-transform: uppercase; margin-bottom: 24px;
+  }
+  .plan-badge.demo { background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3); color: var(--warn); }
+  .plan-badge.full { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.25); color: var(--success); }
+
+  /* APP */
+  #app { display: none; min-height: 100vh; position: relative; z-index: 1; }
+
+  /* SIDEBAR */
+  .sidebar {
+    position: fixed; left: 0; top: 0; bottom: 0; width: 240px;
+    background: var(--surface); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; z-index: 50;
+  }
+
+  .sidebar-logo {
+    padding: 24px 20px; display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-logo-icon {
+    width: 34px; height: 34px; background: var(--accent); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; box-shadow: 0 0 16px var(--accent-glow); flex-shrink: 0;
+  }
+
+  .sidebar-logo-text { font-size: 15px; font-weight: 800; letter-spacing: -0.3px; line-height: 1.2; }
+  .sidebar-logo-text span { color: var(--accent); }
+
+  .sidebar-plan-info { padding: 12px 20px; border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 11px; }
+  .sidebar-company-name { color: var(--text-dim); margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sidebar-plan-row { display: flex; align-items: center; justify-content: space-between; }
+
+  .sidebar-plan-badge {
+    font-size: 10px; padding: 2px 8px; border-radius: 20px;
+    font-weight: 500; letter-spacing: 0.8px; text-transform: uppercase;
+  }
+  .sidebar-plan-badge.demo { background: rgba(245,158,11,0.12); color: var(--warn); border: 1px solid rgba(245,158,11,0.3); }
+  .sidebar-plan-badge.full { background: rgba(34,197,94,0.1); color: var(--success); border: 1px solid rgba(34,197,94,0.25); }
+  .sidebar-days { color: var(--text-muted); font-size: 10px; }
+
+  .sidebar-nav { flex: 1; padding: 16px 12px; overflow-y: auto; }
+
+  .nav-section-label {
+    font-family: var(--mono); font-size: 10px; color: var(--text-muted);
+    letter-spacing: 1.5px; text-transform: uppercase; padding: 0 8px; margin: 16px 0 8px;
+  }
+  .nav-section-label:first-child { margin-top: 0; }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+    border-radius: 8px; cursor: pointer; color: var(--text-muted);
+    font-size: 14px; font-weight: 600; transition: all 0.15s; user-select: none;
+  }
+  .nav-item:hover { background: var(--surface2); color: var(--text-dim); }
+  .nav-item.active { background: var(--accent-dim); color: var(--accent); }
+  .nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
+  .sidebar-footer { padding: 16px 20px; border-top: 1px solid var(--border); }
+
+  .logout-btn {
+    width: 100%; background: transparent; border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px; color: var(--text-muted); font-family: var(--sans);
+    font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .logout-btn:hover { border-color: var(--danger); color: var(--danger); background: rgba(239,68,68,0.06); }
+
+  /* MAIN */
+  .main-content { margin-left: 240px; padding: 32px; min-height: 100vh; }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  .page-header {
+    margin-bottom: 32px; display: flex; align-items: center; justify-content: space-between;
+  }
+
+  .page-title { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
+  .page-subtitle { font-family: var(--mono); font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+  /* CARDS */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+  .card-title { font-size: 13px; font-weight: 700; color: var(--text-dim); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 16px; font-family: var(--mono); }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px 24px; position: relative; overflow: hidden;
+  }
+  .stat-card::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: var(--accent); opacity: 0.4; }
+  .stat-card.warn::after { background: var(--warn); }
+  .stat-card.danger::after { background: var(--danger); }
+  .stat-card.success::after { background: var(--success); }
+
+  .stat-value { font-size: 36px; font-weight: 800; line-height: 1; margin-bottom: 6px; letter-spacing: -1px; }
+  .stat-label { font-family: var(--mono); font-size: 11px; color: var(--text-muted); letter-spacing: 0.5px; }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; border-radius: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  thead th {
+    text-align: left; padding: 12px 16px; font-family: var(--mono);
+    font-size: 11px; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase;
+    border-bottom: 1px solid var(--border); background: var(--surface2);
+  }
+  thead th:first-child { border-radius: 12px 0 0 0; }
+  thead th:last-child  { border-radius: 0 12px 0 0; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody td { padding: 14px 16px; vertical-align: middle; }
+  .td-name { font-weight: 700; color: var(--text); }
+  .td-mono { font-family: var(--mono); font-size: 13px; color: var(--text-dim); }
+
+  /* BADGES */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px;
+    border-radius: 20px; font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: 0.5px;
+  }
+  .badge-warn   { background: rgba(245,158,11,0.12); color: var(--warn);    border: 1px solid rgba(245,158,11,0.25); }
+  .badge-danger { background: rgba(239,68,68,0.10);  color: #f87171;         border: 1px solid rgba(239,68,68,0.2); }
+  .badge-ok     { background: rgba(34,197,94,0.08);  color: var(--success);  border: 1px solid rgba(34,197,94,0.2); }
+  .badge-info   { background: var(--accent-dim);      color: var(--accent);   border: 1px solid rgba(59,130,246,0.2); }
+
+  /* BUTTONS */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px;
+    border-radius: 8px; font-family: var(--sans); font-size: 13px; font-weight: 700;
+    cursor: pointer; border: none; transition: all 0.2s; letter-spacing: 0.2px;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { opacity: 0.85; box-shadow: 0 0 16px var(--accent-glow); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-success { background: rgba(34,197,94,0.12); color: var(--success); border: 1px solid rgba(34,197,94,0.25); }
+  .btn-success:hover { background: rgba(34,197,94,0.2); box-shadow: 0 0 16px rgba(34,197,94,0.2); }
+
+  /* DISPARO CARD */
+  .disparo-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 32px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 24px;
+  }
+  .disparo-info h3 { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+  .disparo-info p { font-family: var(--mono); font-size: 12px; color: var(--text-muted); line-height: 1.6; }
+
+  .btn-disparo {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--accent); color: #fff; border: none; border-radius: 10px;
+    padding: 16px 32px; font-family: var(--sans); font-size: 15px; font-weight: 800;
+    cursor: pointer; transition: all 0.2s; white-space: nowrap;
+    box-shadow: 0 0 24px var(--accent-glow); letter-spacing: 0.3px;
+  }
+  .btn-disparo:hover { opacity: 0.9; box-shadow: 0 0 36px var(--accent-glow); transform: translateY(-1px); }
+  .btn-disparo:active { transform: scale(0.98); }
+  .btn-disparo:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  /* FORM */
+  .form-group { margin-bottom: 18px; }
+  .form-label { display: block; font-family: var(--mono); font-size: 11px; color: var(--text-muted); letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 8px; }
+  .form-input, .form-select {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 11px 14px; color: var(--text); font-family: var(--mono);
+    font-size: 13px; outline: none; transition: border-color 0.2s, box-shadow 0.2s; -webkit-appearance: none;
+  }
+  .form-input:focus, .form-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  /* MODAL */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center; z-index: 200;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 32px; width: 500px; max-width: 95vw;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+    animation: slideUp 0.3s cubic-bezier(0.22,1,0.36,1) both;
+  }
+  .modal-title { font-size: 20px; font-weight: 800; margin-bottom: 24px; letter-spacing: -0.3px; display: flex; align-items: center; gap: 10px; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+
+  /* EMPTY */
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); font-family: var(--mono); font-size: 13px; }
+  .empty-state .empty-icon { font-size: 40px; margin-bottom: 16px; opacity: 0.4; }
+
+  /* SPINNER */
+  .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.2); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* TOAST */
+  #toast {
+    position: fixed; bottom: 28px; right: 28px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 10px; padding: 14px 20px;
+    font-family: var(--mono); font-size: 13px; color: var(--text);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4); z-index: 999;
+    transform: translateY(80px); opacity: 0; transition: all 0.3s cubic-bezier(0.22,1,0.36,1);
+    display: flex; align-items: center; gap: 10px; max-width: 380px;
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+  #toast.success { border-color: rgba(34,197,94,0.35); }
+  #toast.error   { border-color: rgba(239,68,68,0.35); }
+
+  /* RESULT BOX */
+  .result-box {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 20px; margin-top: 20px; font-family: var(--mono); font-size: 13px; line-height: 1.8;
+    display: none;
+  }
+  .result-box.show { display: block; }
+  .result-box .result-title { font-weight: 700; margin-bottom: 10px; color: var(--text-dim); letter-spacing: 0.5px; font-size: 11px; text-transform: uppercase; }
+
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); transition: transform 0.3s; }
+    .sidebar.open { transform: translateX(0); }
+    .main-content { margin-left: 0; padding: 20px; }
+    .form-grid { grid-template-columns: 1fr; }
+    .disparo-card { flex-direction: column; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-icon">🚛</div>
+      <div class="login-logo-text">Transport<span>Monitor</span></div>
+    </div>
+
+    <label class="login-label">Chave de Acesso</label>
+    <input class="login-input" id="login-key" type="text"
+           placeholder="DEMO-XXXXXX ou FULL-XXXXXX"
+           maxlength="11"
+           oninput="this.value = this.value.toUpperCase()"
+           onkeydown="if(event.key==='Enter') doLogin()">
+
+    <button class="login-btn" id="login-btn" onclick="doLogin()">Acessar Sistema</button>
+    <div class="login-error" id="login-error"></div>
+
+    <div class="login-hint">
+      Insira a chave de acesso fornecida pelo administrador.<br>
+      Formato: DEMO-XXXXXX · FULL-XXXXXX
+    </div>
+  </div>
+</div>
+
+<!-- EXPIRED -->
+<div id="expired-screen">
+  <div class="expired-card">
+    <div class="expired-icon">🔒</div>
+    <div class="plan-badge demo" id="expired-plan-badge">DEMO</div>
+    <div class="expired-title">Plano Expirado</div>
+    <div class="expired-subtitle">
+      O período de acesso da sua empresa encerrou.<br>
+      Entre em contato para renovar e continuar monitorando.
+    </div>
+    <div class="expired-company" id="expired-company-name"></div>
+    <a class="expired-btn" href="https://wa.me/5511999999999?text=Quero%20renovar%20o%20Transport%20Monitor" target="_blank">
+      🚀 Renovar Plano — Falar no WhatsApp
+    </a>
+    <div class="expired-back" onclick="goBackToLogin()">← Voltar ao login</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">🚛</div>
+      <div class="sidebar-logo-text">Transport<span>Monitor</span></div>
+    </div>
+
+    <div class="sidebar-plan-info">
+      <div class="sidebar-company-name" id="sidebar-company-name">Carregando...</div>
+      <div class="sidebar-plan-row">
+        <span class="sidebar-plan-badge demo" id="sidebar-plan-badge">DEMO</span>
+        <span class="sidebar-days" id="sidebar-days-remaining"></span>
+      </div>
+    </div>
+
+    <div class="sidebar-nav">
+      <div class="nav-section-label">Principal</div>
+      <div class="nav-item active" onclick="showPage('dashboard')">
+        <span class="nav-icon">📊</span> Dashboard
+      </div>
+      <div class="nav-item" onclick="showPage('alertas')">
+        <span class="nav-icon">🔔</span> Alertas
+      </div>
+
+      <div class="nav-section-label">Cadastros</div>
+      <div class="nav-item" onclick="showPage('empresas')">
+        <span class="nav-icon">🏢</span> Empresas
+      </div>
+      <div class="nav-item" onclick="showPage('motoristas')">
+        <span class="nav-icon">👤</span> Motoristas
+      </div>
+      <div class="nav-item" onclick="showPage('documentos')">
+        <span class="nav-icon">📄</span> Documentos
+      </div>
+
+      <div class="nav-section-label">Sistema</div>
+      <div class="nav-item" onclick="showPage('historico')">
+        <span class="nav-icon">📋</span> Histórico
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <button class="logout-btn" onclick="doLogout()">← Sair</button>
+    </div>
+  </nav>
+
+  <main class="main-content">
+
+    <!-- Banner demo -->
+    <div id="demo-warning-banner" style="
+      background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25);
+      border-radius: 10px; padding: 12px 20px; margin-bottom: 24px;
+      font-family: var(--mono); font-size: 12px; color: #fbbf24;
+      display: none; align-items: center; gap: 10px;">
+      <span>⚠️</span>
+      <span id="demo-warning-text"></span>
+      <a href="https://wa.me/5511999999999?text=Quero%20assinar%20o%20Plano%20Full"
+         target="_blank"
+         style="margin-left:auto; color:var(--warn); font-weight:700; text-decoration:none;
+                border:1px solid rgba(245,158,11,0.4); padding:4px 12px; border-radius:20px; white-space:nowrap;">
+        Fazer Upgrade →
+      </a>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Dashboard</div>
+          <div class="page-subtitle">Visão geral do sistema</div>
+        </div>
+        <button class="btn btn-primary" onclick="triggerJob()">▶ Disparar Alertas Agora</button>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-value" id="stat-empresas">—</div><div class="stat-label">Empresas</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-motoristas">—</div><div class="stat-label">Motoristas</div></div>
+        <div class="stat-card warn"><div class="stat-value" id="stat-venc30">—</div><div class="stat-label">Vencem em 30 dias</div></div>
+        <div class="stat-card danger"><div class="stat-value" id="stat-venc7">—</div><div class="stat-label">Vencem em 7 dias</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📄 Documentos próximos do vencimento</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Motorista</th><th>Documento</th><th>Vencimento</th><th>Dias</th><th>Status</th></tr></thead>
+            <tbody id="tb-dashboard"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ALERTAS -->
+    <div class="page" id="page-alertas">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Alertas</div>
+          <div class="page-subtitle">Documentos que precisam de atenção</div>
+        </div>
+      </div>
+
+      <div class="disparo-card">
+        <div class="disparo-info">
+          <h3>🚨 Disparar Alertas Agora</h3>
+          <p>Envia SMS para todos os motoristas com documentos vencendo<br>em 7, 15 ou 30 dias. O job automático roda todo dia às 08:00.</p>
+        </div>
+        <button class="btn-disparo" id="btn-disparo-alertas" onclick="triggerJobAlertas()">
+          ▶ Executar Verificação
+        </button>
+      </div>
+
+      <div class="result-box" id="disparo-result">
+        <div class="result-title">Resultado do último disparo</div>
+        <div id="disparo-result-content"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🔔 Documentos vencendo em até 30 dias</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Motorista</th><th>Empresa</th><th>Doc</th><th>Vencimento</th><th>Dias</th></tr></thead>
+            <tbody id="tb-alertas"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- EMPRESAS -->
+    <div class="page" id="page-empresas">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Empresas</div>
+          <div class="page-subtitle">Gerencie as empresas cadastradas</div>
+        </div>
+        <button class="btn btn-primary" onclick="openModal('modal-empresa')">+ Nova Empresa</button>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Nome</th><th>E-mail Responsável</th><th>Plano</th><th>Expira em</th></tr></thead>
+            <tbody id="tb-empresas"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- MOTORISTAS -->
+    <div class="page" id="page-motoristas">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Motoristas</div>
+          <div class="page-subtitle">Gerencie os motoristas cadastrados</div>
+        </div>
+        <button class="btn btn-primary" onclick="openModal('modal-motorista')">+ Novo Motorista</button>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Nome</th><th>Telefone</th><th>Empresa</th></tr></thead>
+            <tbody id="tb-motoristas"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- DOCUMENTOS -->
+    <div class="page" id="page-documentos">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Documentos</div>
+          <div class="page-subtitle">Todos os documentos cadastrados</div>
+        </div>
+        <button class="btn btn-primary" onclick="openModal('modal-documento')">+ Novo Documento</button>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Tipo</th><th>Motorista</th><th>Vencimento</th><th>Status</th></tr></thead>
+            <tbody id="tb-documentos"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTÓRICO -->
+    <div class="page" id="page-historico">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Histórico</div>
+          <div class="page-subtitle">Log de notificações enviadas</div>
+        </div>
+        <button class="btn btn-ghost" onclick="loadHistorico()">↺ Atualizar</button>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Documento</th><th>Status</th><th>Data/Hora</th><th>Erro</th></tr></thead>
+            <tbody id="tb-historico"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODALS -->
+<div class="modal-backdrop" id="modal-empresa">
+  <div class="modal">
+    <div class="modal-title">🏢 Nova Empresa</div>
+    <div class="form-group">
+      <label class="form-label">Nome da Empresa</label>
+      <input class="form-input" id="emp-nome" placeholder="Ex: Transportes Silva LTDA">
+    </div>
+    <div class="form-group">
+      <label class="form-label">E-mail do Responsável</label>
+      <input class="form-input" id="emp-email" type="email" placeholder="responsavel@empresa.com">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-empresa')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveEmpresa()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-motorista">
+  <div class="modal">
+    <div class="modal-title">👤 Novo Motorista</div>
+    <div class="form-group">
+      <label class="form-label">Nome Completo</label>
+      <input class="form-input" id="mot-nome" placeholder="Ex: João da Silva">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Telefone (com DDD, só números)</label>
+      <input class="form-input" id="mot-tel" placeholder="Ex: 11999990000">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Empresa</label>
+      <select class="form-select" id="mot-empresa"></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-motorista')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveMotorista()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-documento">
+  <div class="modal">
+    <div class="modal-title">📄 Novo Documento</div>
+    <div class="form-group">
+      <label class="form-label">Tipo de Documento</label>
+      <select class="form-select" id="doc-tipo">
+        <option>CNH</option>
+        <option>CRLV</option>
+        <option>Curso MOPP</option>
+        <option>ASO</option>
+        <option>Outro</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Data de Vencimento</label>
+      <input class="form-input" id="doc-venc" type="date">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Motorista</label>
+      <select class="form-select" id="doc-motorista"></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-documento')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveDocumento()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API = 'http://localhost:8000';
+let session = null;
+
+// ── AUTH ──────────────────────────────────────────────────────────────────────
+
+async function doLogin() {
+  const key   = document.getElementById('login-key').value.trim().toUpperCase();
+  const errEl = document.getElementById('login-error');
+  const btn   = document.getElementById('login-btn');
+  errEl.style.display = 'none';
+
+  if (!key) {
+    errEl.textContent = 'Digite a chave de acesso.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Verificando...';
+
+  try {
+    const res = await fetch(`${API}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ access_key: key })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      errEl.textContent = data.detail || 'Chave de acesso inválida.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    session = data;
+    enterApp();
+
+  } catch (e) {
+    errEl.textContent = 'Não foi possível conectar ao servidor.';
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Acessar Sistema';
+  }
+}
+
+function goBackToLogin() {
+  session = null;
+  document.getElementById('expired-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-key').value = '';
+  document.getElementById('login-error').style.display = 'none';
+}
+
+function enterApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('expired-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+
+  document.getElementById('sidebar-company-name').textContent = session.company_name;
+  const badge = document.getElementById('sidebar-plan-badge');
+  badge.textContent = session.plan_type.toUpperCase();
+  badge.className = `sidebar-plan-badge ${session.plan_type}`;
+
+  if (session.days_remaining !== null) {
+    document.getElementById('sidebar-days-remaining').textContent =
+      `${session.days_remaining}d restantes`;
+  }
+
+  if (session.plan_type === 'demo' && session.days_remaining !== null) {
+    const banner = document.getElementById('demo-warning-banner');
+    document.getElementById('demo-warning-text').textContent =
+      `Plano Demo · ${session.days_remaining} dia(s) restante(s). Faça upgrade para continuar após o período.`;
+    banner.style.display = 'flex';
+  }
+
+  loadDashboard();
+}
+
+function doLogout() {
+  session = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-key').value = '';
+  document.getElementById('login-error').style.display = 'none';
+  document.getElementById('demo-warning-banner').style.display = 'none';
+}
+
+// ── NAVEGAÇÃO ─────────────────────────────────────────────────────────────────
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(`page-${name}`).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.getAttribute('onclick')?.includes(`'${name}'`)) n.classList.add('active');
+  });
+  const loaders = {
+    dashboard: loadDashboard, alertas: loadAlertas, empresas: loadEmpresas,
+    motoristas: loadMotoristas, documentos: loadDocumentos, historico: loadHistorico,
+  };
+  if (loaders[name]) loaders[name]();
+}
+
+// ── API HELPERS ───────────────────────────────────────────────────────────────
+
+async function get(path) {
+  const r = await fetch(`${API}${path}`);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function post(path, body) {
+  const r = await fetch(`${API}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({}));
+    throw new Error(e.detail || 'Erro na requisição');
+  }
+  return r.json();
+}
+
+function daysLeft(dateStr) {
+  const d = new Date(dateStr);
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  return Math.round((d - today) / 86400000);
+}
+
+function statusBadge(days) {
+  if (days < 0)   return `<span class="badge badge-danger">Vencido</span>`;
+  if (days <= 7)  return `<span class="badge badge-danger">🚨 ${days}d</span>`;
+  if (days <= 30) return `<span class="badge badge-warn">⚠️ ${days}d</span>`;
+  return `<span class="badge badge-ok">✅ ${days}d</span>`;
+}
+
+// ── LOADERS ───────────────────────────────────────────────────────────────────
+
+async function loadDashboard() {
+  try {
+    const [empresas, motoristas, docs] = await Promise.all([
+      get('/companies'), get('/drivers'), get('/documents')
+    ]);
+    document.getElementById('stat-empresas').textContent   = empresas.length;
+    document.getElementById('stat-motoristas').textContent = motoristas.length;
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    const lim30 = new Date(hoje); lim30.setDate(lim30.getDate() + 30);
+    const lim7  = new Date(hoje); lim7.setDate(lim7.getDate() + 7);
+    const expiring30 = docs.filter(d => { const e = new Date(d.expiration_date); return e >= hoje && e <= lim30; });
+    const expiring7  = docs.filter(d => { const e = new Date(d.expiration_date); return e >= hoje && e <= lim7; });
+    document.getElementById('stat-venc30').textContent = expiring30.length;
+    document.getElementById('stat-venc7').textContent  = expiring7.length;
+    const motorMap = {};
+    motoristas.forEach(m => motorMap[m.id] = m.name);
+    const sorted = [...expiring30].sort((a,b) => new Date(a.expiration_date) - new Date(b.expiration_date));
+    const tb = document.getElementById('tb-dashboard');
+    tb.innerHTML = sorted.length === 0
+      ? `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">✅</div>Nenhum documento vencendo nos próximos 30 dias</div></td></tr>`
+      : sorted.map(d => {
+          const days = daysLeft(d.expiration_date);
+          return `<tr>
+            <td class="td-name">${motorMap[d.driver_id] || '—'}</td>
+            <td><span class="badge badge-info">${d.doc_type}</span></td>
+            <td class="td-mono">${d.expiration_date}</td>
+            <td class="td-mono">${days}d</td>
+            <td>${statusBadge(days)}</td>
+          </tr>`;
+        }).join('');
+  } catch(e) { console.error(e); }
+}
+
+async function loadAlertas() {
+  try {
+    const [docs, motoristas, empresas] = await Promise.all([get('/documents'), get('/drivers'), get('/companies')]);
+    const motorMap = {};
+    motoristas.forEach(m => motorMap[m.id] = { name: m.name, company_id: m.company_id });
+    const empMap = {};
+    empresas.forEach(e => empMap[e.id] = e.name);
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    const lim30 = new Date(hoje); lim30.setDate(lim30.getDate() + 30);
+    const expiring = docs.filter(d => { const exp = new Date(d.expiration_date); return exp >= hoje && exp <= lim30; })
+      .sort((a,b) => new Date(a.expiration_date) - new Date(b.expiration_date));
+    const tb = document.getElementById('tb-alertas');
+    tb.innerHTML = expiring.length === 0
+      ? `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">✅</div>Nenhum alerta no momento</div></td></tr>`
+      : expiring.map(d => {
+          const days = daysLeft(d.expiration_date);
+          const mot  = motorMap[d.driver_id];
+          return `<tr>
+            <td class="td-name">${mot?.name || '—'}</td>
+            <td class="td-mono">${empMap[mot?.company_id] || '—'}</td>
+            <td><span class="badge badge-info">${d.doc_type}</span></td>
+            <td class="td-mono">${d.expiration_date}</td>
+            <td>${statusBadge(days)}</td>
+          </tr>`;
+        }).join('');
+  } catch(e) { console.error(e); }
+}
+
+async function loadEmpresas() {
+  try {
+    const empresas = await get('/companies');
+    const tb = document.getElementById('tb-empresas');
+    if (!empresas.length) {
+      tb.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">🏢</div>Nenhuma empresa cadastrada</div></td></tr>`;
+      return;
+    }
+    tb.innerHTML = empresas.map(e => {
+      const planClass = e.plan_type === 'full' ? 'badge-ok' : 'badge-warn';
+      const days = e.plan_expires_at ? daysLeft(e.plan_expires_at) : null;
+      const expLabel = days !== null
+        ? `${e.plan_expires_at} <span style="color:var(--text-muted);font-size:11px;">(${days}d)</span>`
+        : '—';
+      return `<tr>
+        <td class="td-mono">#${e.id}</td>
+        <td class="td-name">${e.name}</td>
+        <td class="td-mono">${e.responsible_email || '—'}</td>
+        <td><span class="badge ${planClass}">${(e.plan_type||'demo').toUpperCase()}</span></td>
+        <td class="td-mono">${expLabel}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) { console.error(e); }
+}
+
+async function loadMotoristas() {
+  try {
+    const [motoristas, empresas] = await Promise.all([get('/drivers'), get('/companies')]);
+    const empMap = {};
+    empresas.forEach(e => empMap[e.id] = e.name);
+    const tb = document.getElementById('tb-motoristas');
+    tb.innerHTML = !motoristas.length
+      ? `<tr><td colspan="4"><div class="empty-state"><div class="empty-icon">👤</div>Nenhum motorista cadastrado</div></td></tr>`
+      : motoristas.map(m => `<tr>
+          <td class="td-mono">#${m.id}</td>
+          <td class="td-name">${m.name}</td>
+          <td class="td-mono">${m.phone_number}</td>
+          <td class="td-mono">${empMap[m.company_id] || '—'}</td>
+        </tr>`).join('');
+    const sel = document.getElementById('mot-empresa');
+    sel.innerHTML = empresas.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+  } catch(e) { console.error(e); }
+}
+
+async function loadDocumentos() {
+  try {
+    const [docs, motoristas] = await Promise.all([get('/documents'), get('/drivers')]);
+    const motMap = {};
+    motoristas.forEach(m => motMap[m.id] = m.name);
+    const tb = document.getElementById('tb-documentos');
+    tb.innerHTML = !docs.length
+      ? `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">📄</div>Nenhum documento cadastrado</div></td></tr>`
+      : docs.map(d => {
+          const days = daysLeft(d.expiration_date);
+          return `<tr>
+            <td class="td-mono">#${d.id}</td>
+            <td><span class="badge badge-info">${d.doc_type}</span></td>
+            <td class="td-name">${motMap[d.driver_id] || '—'}</td>
+            <td class="td-mono">${d.expiration_date}</td>
+            <td>${statusBadge(days)}</td>
+          </tr>`;
+        }).join('');
+    const sel = document.getElementById('doc-motorista');
+    sel.innerHTML = motoristas.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+  } catch(e) { console.error(e); }
+}
+
+async function loadHistorico() {
+  try {
+    const logs = await get('/notifications');
+    const tb   = document.getElementById('tb-historico');
+    tb.innerHTML = !logs.length
+      ? `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">📋</div>Nenhum registro de notificação</div></td></tr>`
+      : logs.map(l => {
+          const status = l.status === 'success'
+            ? `<span class="badge badge-ok">✅ Enviado</span>`
+            : `<span class="badge badge-danger">❌ Erro</span>`;
+          return `<tr>
+            <td class="td-mono">#${l.id}</td>
+            <td class="td-mono">Doc #${l.document_id}</td>
+            <td>${status}</td>
+            <td class="td-mono">${l.timestamp ? l.timestamp.replace('T',' ').slice(0,19) : '—'}</td>
+            <td class="td-mono" style="color:var(--danger);font-size:12px;">${l.error_message || '—'}</td>
+          </tr>`;
+        }).join('');
+  } catch(e) { console.error(e); }
+}
+
+// ── DISPARO ───────────────────────────────────────────────────────────────────
+
+async function triggerJob() {
+  try {
+    toast('Disparando alertas...', 'info');
+    const r = await post('/trigger-scheduler', {});
+    toast(r.message || 'Job executado!', 'success');
+    loadDashboard();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function triggerJobAlertas() {
+  const btn = document.getElementById('btn-disparo-alertas');
+  const resultBox = document.getElementById('disparo-result');
+  const resultContent = document.getElementById('disparo-result-content');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Executando...';
+  try {
+    const r = await post('/trigger-scheduler', {});
+    const msg = r.message || 'Job executado com sucesso!';
+    toast(msg, 'success');
+    resultContent.innerHTML = `<span style="color:var(--success)">✅ ${msg}</span>`;
+    resultBox.classList.add('show');
+    loadAlertas();
+  } catch(e) {
+    toast(e.message, 'error');
+    resultContent.innerHTML = `<span style="color:var(--danger)">❌ ${e.message}</span>`;
+    resultBox.classList.add('show');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '▶ Executar Verificação';
+  }
+}
+
+// ── SAVE ACTIONS ──────────────────────────────────────────────────────────────
+
+async function saveEmpresa() {
+  const nome  = document.getElementById('emp-nome').value.trim();
+  const email = document.getElementById('emp-email').value.trim();
+  if (!nome) return toast('Preencha o nome da empresa.', 'error');
+  try {
+    await post('/companies', { name: nome, responsible_email: email || null });
+    closeModal('modal-empresa');
+    document.getElementById('emp-nome').value = '';
+    document.getElementById('emp-email').value = '';
+    toast('Empresa cadastrada com sucesso!', 'success');
+    loadEmpresas();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function saveMotorista() {
+  const nome  = document.getElementById('mot-nome').value.trim();
+  const tel   = document.getElementById('mot-tel').value.trim();
+  const empId = parseInt(document.getElementById('mot-empresa').value);
+  if (!nome || !tel) return toast('Preencha todos os campos.', 'error');
+  try {
+    await post('/drivers', { name: nome, phone_number: tel, company_id: empId });
+    closeModal('modal-motorista');
+    document.getElementById('mot-nome').value = '';
+    document.getElementById('mot-tel').value  = '';
+    toast('Motorista cadastrado com sucesso!', 'success');
+    loadMotoristas();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function saveDocumento() {
+  const tipo  = document.getElementById('doc-tipo').value;
+  const venc  = document.getElementById('doc-venc').value;
+  const motId = parseInt(document.getElementById('doc-motorista').value);
+  if (!venc) return toast('Selecione a data de vencimento.', 'error');
+  try {
+    await post('/documents', { doc_type: tipo, expiration_date: venc, driver_id: motId });
+    closeModal('modal-documento');
+    document.getElementById('doc-venc').value = '';
+    toast('Documento cadastrado com sucesso!', 'success');
+    loadDocumentos();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── MODAL HELPERS ─────────────────────────────────────────────────────────────
+
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  if (id === 'modal-motorista') loadMotoristas();
+  if (id === 'modal-documento') loadDocumentos();
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+document.querySelectorAll('.modal-backdrop').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+
+let toastTimer;
+function toast(msg, type = 'info') {
+  const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+  const el = document.getElementById('toast');
+  el.innerHTML = `<span>${icons[type] || 'ℹ️'}</span><span>${msg}</span>`;
+  el.className = `show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = ''; }, 4000);
+}
+</script>
+</body>
+</html>
