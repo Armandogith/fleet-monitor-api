@@ -6,7 +6,7 @@ services:
     container_name: transport_monitor_api
     restart: always
     ports:
-      - "80:8000"
+      - "8000:8000"
     volumes:
       - ./data:/app/data
     environment:

@@ -11,3 +11,5 @@ python-dotenv>=1.0.0
 openpyxl>=3.1.0
 python-multipart>=0.0.9
 apscheduler>=3.10.0
+aiosmtplib>=2.0.0
+resend>=2.0.0
