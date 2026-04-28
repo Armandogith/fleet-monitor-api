@@ -79,6 +79,16 @@ async def send_sms_alert(state):
         result["status"] = "error"
         result["error"] = str(e)
         print(f"❌ Erro SMS para {task['driver_name']}: {e}")
+    # Salva log diretamente no banco
+    async with AsyncSessionLocal() as session:
+        log = NotificationLog(
+            document_id=result.get("document_id"),
+            status=result.get("status", "error"),
+            error_message=result.get("error", "")
+        )
+        session.add(log)
+        await session.commit()
+        print(f"✅ Log salvo: {task['driver_name']} - {result['status']}")
     return result
 
 async def persist_and_cleanup(state):

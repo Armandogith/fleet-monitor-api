@@ -247,3 +247,25 @@ async def trigger_job():
 async def trigger_scheduler():
     send_results = await _run_job()
     return {"message": f"Job executado! {len(send_results)} notificações enviadas."}
+@router.get("/download-template")
+async def download_template():
+    from fastapi.responses import StreamingResponse
+    from openpyxl import Workbook
+    import io
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Modelo Importacao"
+    ws.append(["Nome Completo", "Telefone (Apenas Numeros)", "Tipo de Documento", "Data de Vencimento (DD/MM/AAAA)"])
+    ws.append(["João da Silva", "11999990000", "CNH", "15/10/2026"])
+    ws.column_dimensions['A'].width = 30
+    ws.column_dimensions['B'].width = 25
+    ws.column_dimensions['C'].width = 25
+    ws.column_dimensions['D'].width = 35
+    stream = io.BytesIO()
+    wb.save(stream)
+    stream.seek(0)
+    return StreamingResponse(
+        stream,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=modelo_importacao.xlsx"}
+    )

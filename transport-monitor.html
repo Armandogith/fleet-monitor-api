@@ -804,7 +804,7 @@
           <div class="page-title">Motoristas</div>
           <div class="page-subtitle">Gerencie os motoristas cadastrados</div>
         </div>
-        <button class="btn btn-primary" onclick="openModal('modal-motorista')">+ Novo Motorista</button>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end;"><button class="btn btn-ghost" onclick="downloadTemplate()">📥 Baixar Modelo</button><button class="btn btn-ghost" onclick="exportDrivers()">💾 Exportar Excel</button><label class="btn btn-ghost" style="cursor: pointer; margin-bottom: 0;">📤 Importar Excel<input type="file" id="file-upload" accept=".xlsx, .xls" style="display: none;" onchange="uploadDrivers(event)"></label><button class="btn btn-primary" onclick="openModal('modal-motorista')">+ Novo Motorista</button></div>
       </div>
       <div class="card">
         <div class="table-wrap">
@@ -1005,6 +1005,32 @@ function enterApp() {
   }
 
   loadDashboard();
+}
+
+function downloadTemplate() {
+  window.open(`${API}/download-template`, '_blank');
+}
+
+function exportDrivers() {
+  if (!session || !session.company_id) { toast('Sessão expirada.', 'error'); return; }
+  window.open(`${API}/export-drivers?company_id=${session.company_id}`, '_blank');
+}
+
+async function uploadDrivers(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (!session || !session.company_id) { toast('Erro: faça login novamente.', 'error'); return; }
+  const formData = new FormData();
+  formData.append('file', file);
+  toast('Importando planilha...', 'info');
+  try {
+    const res = await fetch(`${API}/upload-drivers?company_id=${session.company_id}`, { method: 'POST', body: formData });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Erro ao importar');
+    toast(`Sucesso! ${data.motoristas_criados} registros importados.`, 'success');
+    loadMotoristas();
+  } catch (error) { toast(error.message, 'error'); }
+  finally { event.target.value = ''; }
 }
 
 function doLogout() {
