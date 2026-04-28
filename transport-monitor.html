@@ -797,14 +797,22 @@
       </div>
     </div>
 
-    <!-- MOTORISTAS -->
+    <!-- MOTORISTAS (COM OS BOTÕES EXCEL ADICIONADOS) -->
     <div class="page" id="page-motoristas">
       <div class="page-header">
         <div>
           <div class="page-title">Motoristas</div>
           <div class="page-subtitle">Gerencie os motoristas cadastrados</div>
         </div>
-        <button class="btn btn-primary" onclick="openModal('modal-motorista')">+ Novo Motorista</button>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end;">
+          <button class="btn btn-ghost" onclick="downloadTemplate()">📥 Baixar Modelo</button>
+          <button class="btn btn-ghost" onclick="exportDrivers()">💾 Exportar Excel</button>
+          <label class="btn btn-ghost" style="cursor: pointer; margin-bottom: 0;">
+            📤 Importar Excel
+            <input type="file" id="file-upload" accept=".xlsx, .xls" style="display: none;" onchange="uploadDrivers(event)">
+          </label>
+          <button class="btn btn-primary" onclick="openModal('modal-motorista')">+ Novo Motorista</button>
+        </div>
       </div>
       <div class="card">
         <div class="table-wrap">
@@ -1303,12 +1311,72 @@ document.querySelectorAll('.modal-backdrop').forEach(m => {
 
 let toastTimer;
 function toast(msg, type = 'info') {
-  const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+  const icons = { success: '✅', error: '❌', info: 'ℹ️', warn: '⚠️' };
   const el = document.getElementById('toast');
   el.innerHTML = `<span>${icons[type] || 'ℹ️'}</span><span>${msg}</span>`;
   el.className = `show ${type}`;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { el.className = ''; }, 4000);
+}
+
+// ==========================================
+// FUNÇÕES DE IMPORTAÇÃO E EXPORTAÇÃO EXCEL
+// ==========================================
+
+function downloadTemplate() {
+  window.open(`${API}/download-template`, '_blank');
+}
+
+function exportDrivers() {
+  if (!session || !session.company_id) {
+    toast('Sessão expirada. Faça login novamente.', 'error');
+    return;
+  }
+  window.open(`${API}/export-drivers?company_id=${session.company_id}`, '_blank');
+}
+
+async function uploadDrivers(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  if (!session || !session.company_id) {
+    toast('Erro: ID da empresa não encontrado. Refaça o login.', 'error');
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  toast('Importando planilha, aguarde...', 'info');
+
+  try {
+    const res = await fetch(`${API}/upload-drivers?company_id=${session.company_id}`, {
+      method: 'POST',
+      body: formData
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.detail || 'Erro ao importar planilha');
+    }
+
+    if (data.erros && data.erros.length > 0) {
+      toast(`${data.motoristas_criados} importados. Houve erros em algumas linhas.`, 'warn');
+      console.warn("Erros na importação:", data.erros);
+    } else {
+      toast(`Sucesso! ${data.motoristas_criados} registros importados.`, 'success');
+    }
+
+    // Recarrega as tabelas para exibir os novos dados
+    loadMotoristas();
+    loadDocumentos();
+
+  } catch (error) {
+    toast(error.message, 'error');
+  } finally {
+    event.target.value = ''; // Limpa o input file
+  }
 }
 </script>
 </body>
