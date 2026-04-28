@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from datetime import date, timedelta
 from typing import Optional
@@ -7,6 +8,7 @@ from sqlalchemy import select
 from app.core.database import AsyncSessionLocal
 from app.models.schema import Driver, Document, Company, NotificationLog
 import openpyxl
+from openpyxl import Workbook
 import io
 
 router = APIRouter()
@@ -19,18 +21,15 @@ class DriverCreate(BaseModel):
     name: str
     phone_number: str
 
-
 class DocumentCreate(BaseModel):
     driver_id: int
     doc_type: str
     expiration_date: date
 
-
 class CompanyCreate(BaseModel):
     name: str
     responsible_email: Optional[str] = None
     responsible_whatsapp: Optional[str] = None
-
 
 class CompanyUpdate(BaseModel):
     responsible_email: Optional[str] = None
@@ -61,7 +60,6 @@ async def list_companies(db: AsyncSession = Depends(get_db)):
         for c in companies
     ]
 
-
 @router.post("/companies")
 async def create_company(company: CompanyCreate, db: AsyncSession = Depends(get_db)):
     new_company = Company(
@@ -75,7 +73,6 @@ async def create_company(company: CompanyCreate, db: AsyncSession = Depends(get_
     await db.commit()
     await db.refresh(new_company)
     return {"status": "success", "company_id": new_company.id}
-
 
 @router.put("/companies/{company_id}/responsible")
 async def update_responsible(company_id: int, data: CompanyUpdate, db: AsyncSession = Depends(get_db)):
@@ -101,7 +98,6 @@ async def list_drivers(db: AsyncSession = Depends(get_db)):
         {"id": d.id, "name": d.name, "phone_number": d.phone_number, "company_id": d.company_id}
         for d in drivers
     ]
-
 
 @router.post("/drivers")
 async def create_driver(driver: DriverCreate, db: AsyncSession = Depends(get_db)):
@@ -132,7 +128,6 @@ async def list_documents(db: AsyncSession = Depends(get_db)):
         for d in docs
     ]
 
-
 @router.post("/documents")
 async def create_document(doc: DocumentCreate, db: AsyncSession = Depends(get_db)):
     new_doc = Document(
@@ -146,7 +141,7 @@ async def create_document(doc: DocumentCreate, db: AsyncSession = Depends(get_db
     return {"status": "success", "document_id": new_doc.id}
 
 
-# ── UPLOAD DE PLANILHA ────────────────────────────────────────────────────────
+# ── UPLOAD / EXCEL ────────────────────────────────────────────────────────────
 
 @router.post("/upload-drivers")
 async def upload_drivers(
@@ -174,13 +169,15 @@ async def upload_drivers(
             if isinstance(data_venc, str):
                 from datetime import datetime
                 data_venc = datetime.strptime(data_venc.strip(), "%d/%m/%Y").date()
+            
             driver = Driver(
                 company_id=company_id,
                 name=str(nome).strip(),
                 phone_number=str(telefone).strip(),
             )
             db.add(driver)
-            await db.flush()
+            await db.flush() # Necessário para gerar o ID do motorista
+            
             doc = Document(
                 driver_id=driver.id,
                 doc_type=str(tipo_doc).strip(),
@@ -194,8 +191,89 @@ async def upload_drivers(
     await db.commit()
     return {"status": "success", "motoristas_criados": criados, "erros": erros}
 
+@router.get("/download-template")
+async def download_template():
+    """Gera e baixa a planilha modelo vazia para o cliente preencher."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Modelo Importacao"
+    
+    # Cabeçalhos
+    ws.append(["Nome Completo", "Telefone (Apenas Numeros)", "Tipo de Documento", "Data de Vencimento (DD/MM/AAAA)"])
+    
+    # Linha de Exemplo
+    ws.append(["João da Silva", "11999990000", "CNH", "15/10/2024"])
+    
+    # Ajustar largura das colunas
+    ws.column_dimensions['A'].width = 30
+    ws.column_dimensions['B'].width = 25
+    ws.column_dimensions['C'].width = 25
+    ws.column_dimensions['D'].width = 35
 
-# ── HISTÓRICO ─────────────────────────────────────────────────────────────────
+    stream = io.BytesIO()
+    wb.save(stream)
+    stream.seek(0)
+    
+    return StreamingResponse(
+        stream, 
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+        headers={"Content-Disposition": "attachment; filename=modelo_importacao.xlsx"}
+    )
+
+@router.get("/export-drivers")
+async def export_drivers(company_id: int, db: AsyncSession = Depends(get_db)):
+    """Exporta todos os motoristas e documentos da empresa para Excel."""
+    query = (
+        select(Driver, Document)
+        .outerjoin(Document, Driver.id == Document.driver_id)
+        .where(Driver.company_id == company_id)
+    )
+    result = await db.execute(query)
+    rows = result.all()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Motoristas e Documentos"
+    
+    # Cabeçalhos
+    ws.append(["Nome Completo", "Telefone", "Tipo de Documento", "Data de Vencimento", "Status"])
+    
+    for driver, doc in rows:
+        nome = driver.name
+        telefone = driver.phone_number
+        if doc:
+            tipo = doc.doc_type
+            vencimento = doc.expiration_date.strftime("%d/%m/%Y")
+            dias = (doc.expiration_date - date.today()).days
+            if dias < 0:
+                status = "Vencido"
+            elif dias <= 30:
+                status = f"Vence em {dias} dias"
+            else:
+                status = "Em dia"
+        else:
+            tipo = "Nenhum"
+            vencimento = "-"
+            status = "-"
+            
+        ws.append([nome, telefone, tipo, vencimento, status])
+
+    # Ajustar largura das colunas
+    for col in ['A', 'B', 'C', 'D', 'E']:
+        ws.column_dimensions[col].width = 25
+
+    stream = io.BytesIO()
+    wb.save(stream)
+    stream.seek(0)
+    
+    return StreamingResponse(
+        stream, 
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+        headers={"Content-Disposition": "attachment; filename=motoristas_exportados.xlsx"}
+    )
+
+
+# ── HISTÓRICO / DISPARO ───────────────────────────────────────────────────────
 
 async def _list_logs(db: AsyncSession):
     result = await db.execute(
@@ -213,18 +291,13 @@ async def _list_logs(db: AsyncSession):
         for l in logs
     ]
 
-
 @router.get("/notification-logs")
 async def list_logs(db: AsyncSession = Depends(get_db)):
     return await _list_logs(db)
 
-
 @router.get("/notifications")
 async def list_notifications(db: AsyncSession = Depends(get_db)):
     return await _list_logs(db)
-
-
-# ── DISPARO DO JOB ────────────────────────────────────────────────────────────
 
 async def _run_job():
     from app.graph.workflow import create_workflow
@@ -236,12 +309,10 @@ async def _run_job():
     })
     return result.get("send_results", [])
 
-
 @router.post("/trigger-job")
 async def trigger_job():
     send_results = await _run_job()
     return {"status": "ok", "send_results": send_results}
-
 
 @router.post("/trigger-scheduler")
 async def trigger_scheduler():

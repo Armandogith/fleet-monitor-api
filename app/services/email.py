@@ -1,3 +1,4 @@
+tee /root/app/app/services/email.py > /dev/null << 'EOF'
 import resend
 import os
 
@@ -9,7 +10,7 @@ class EmailService:
             return
         try:
             resend.Emails.send({
-                "from": "AlertaFrota <contato@alertafrota.com.br>",
+                "from": "AlertaFrota <onboarding@resend.dev>",
                 "to": to_email,
                 "subject": f"⚠️ Alerta: {doc_type} de {driver_name} vence em {days_remaining} dias",
                 "html": f"""
@@ -25,3 +26,4 @@ class EmailService:
             print(f"❌ Erro email: {e}")
 
 email_service = EmailService()
+EOF
